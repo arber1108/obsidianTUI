@@ -32,11 +32,21 @@ func NewModel() model {
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.SetWidth(20)
-	return model{
+	m := model{
 		state:     pathView,
 		textInput: ti,
 		viewport:  viewport.New(viewport.WithWidth(80), viewport.WithHeight(40)),
 	}
+
+	if key := loadSavedApiKey(); key != "" {
+		if code, _ := checkApiKey(key); code == 200 {
+			setApiKey(key)
+			m.dir = getDirectory("")
+			m.state = menuView
+		}
+	}
+
+	return m
 }
 
 func (m model) Init() tea.Cmd {
@@ -64,6 +74,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.info = "API key is Valid"
 					setApiKey(apiKey)
+					saveApiKey(apiKey)
 					m.dir = getDirectory("")
 					m.state = menuView
 					m.cursor = 0

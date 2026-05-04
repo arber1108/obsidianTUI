@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -33,6 +34,35 @@ type FileContent struct {
 }
 
 const basePath = "https://127.0.0.1:27124"
+
+func configPath() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "obsidianTUI", "apikey")
+}
+
+func saveApiKey(key string) {
+	path := configPath()
+	if path == "" {
+		return
+	}
+	os.MkdirAll(filepath.Dir(path), 0700)
+	os.WriteFile(path, []byte(key), 0600)
+}
+
+func loadSavedApiKey() string {
+	path := configPath()
+	if path == "" {
+		return ""
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
 
 func setApiKey(s string) {
 	store.apiKey = s
