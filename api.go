@@ -22,6 +22,16 @@ type Directory struct {
 	Path  string
 }
 
+type Heading struct {
+	Heading string `json:"heading"`
+	Level   int    `json:"level"`
+}
+
+type FileContent struct {
+	Content  string
+	Headings []Heading
+}
+
 const basePath = "https://127.0.0.1:27124"
 
 func setApiKey(s string) {
@@ -42,7 +52,7 @@ func checkApiKey(apiKey string) (int, error) {
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	res, err := client.Do(req)
 	if err != nil {
-		return res.StatusCode, err
+		return 0, err
 	}
 
 	return res.StatusCode, nil
@@ -92,32 +102,54 @@ func getDirectory(path string) Directory {
 	return dir
 }
 
-func getFile(path string) string {
+func getFile(path string) FileContent {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 	}
+	url := basePath + "/vault/" + path
 
-	req, err := http.NewRequest("GET", basePath+"/vault/"+path, nil)
+	contentReq, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return ""
+		return FileContent{}
 	}
-	req.Header.Set("Authorization", "Bearer "+store.apiKey)
-	req.Header.Set("Accept", "text/markdown")
+	contentReq.Header.Set("Authorization", "Bearer "+store.apiKey)
+	contentReq.Header.Set("Accept", "text/markdown")
 
-	res, err := client.Do(req)
+	contentRes, err := client.Do(contentReq)
 	if err != nil {
-		return ""
+		return FileContent{}
 	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
+	defer contentRes.Body.Close()
+	body, err := io.ReadAll(contentRes.Body)
 	if err != nil {
-		return ""
+		return FileContent{}
 	}
 
-	return string(body)
+	mapReq, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return FileContent{Content: string(body)}
+	}
+	mapReq.Header.Set("Authorization", "Bearer "+store.apiKey)
+	mapReq.Header.Set("Accept", "application/vnd.olrapi.document-map+json")
+
+	mapRes, err := client.Do(mapReq)
+	if err != nil {
+		return FileContent{Content: string(body)}
+	}
+	defer mapRes.Body.Close()
+	mapBody, err := io.ReadAll(mapRes.Body)
+	if err != nil {
+		return FileContent{Content: string(body)}
+	}
+
+	var docMap struct {
+		Headings []Heading `json:"headings"`
+	}
+	json.Unmarshal(mapBody, &docMap)
+
+	return FileContent{Content: string(body), Headings: docMap.Headings}
 }
 
 func (d Directory) isDirectory(index int) bool {
@@ -135,4 +167,30 @@ func (d Directory) parentPath() string {
 
 func (d Directory) isMarkdown(index int) bool {
 	return strings.HasSuffix(d.Files[index], ".md")
+}
+
+func (d Directory) openInObsidian(index int) {
+	url := basePath + "/open/" + d.Path + d.Files[index]
+
+	fmt.Print(url)
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		fmt.Printf("Unable to create request: %v", err)
+		os.Exit(1)
+	}
+	req.Header.Set("Authorization", "Bearer "+store.apiKey)
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("Unable to get directory: %v", err)
+		os.Exit(1)
+	}
+	defer res.Body.Close()
+
 }
