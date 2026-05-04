@@ -10,7 +10,7 @@ func main() {
 
 	m := NewModel()
 
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Unable to run TUI: %v", err)
