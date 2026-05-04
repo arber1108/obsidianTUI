@@ -167,5 +167,7 @@ func (m model) View() tea.View {
 		body.WriteString(footer)
 	}
 
-	return tea.NewView(body.String())
+	v := tea.NewView(body.String())
+	v.AltScreen = true
+	return v
 }
