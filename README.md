@@ -10,7 +10,12 @@ A terminal interface for browsing and reading your Obsidian vault.
 
 ## Installation
 
-Download the binary for your OS from the releases page, or build from source:
+Requires [Go](https://go.dev/dl/) installed.
+
+```bash
+git clone https://github.com/arber1108/obsidianTUI.git
+cd obsidianTUI
+```
 
 ```bash
 # macOS / Linux
